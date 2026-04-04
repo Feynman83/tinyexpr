@@ -7,3 +7,7 @@ example3
 repl
 smoke
 smoke_pr
+.zig-cache/
+.zig-global-cache/
+repl-armv5-linux
+smoke-armv5-linux
