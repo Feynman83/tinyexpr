@@ -101,7 +101,7 @@ After you're finished, make sure to call `te_free()`.
 
     int err;
     /* Compile the expression with variables. */
-    te_expr *expr = te_compile("sqrt(x^2+y^2)", vars, 2, &err);
+    te_expr *expr = te_compile("sqrt(pow(x,2)+pow(y,2))", vars, 2, &err);
 
     if (expr) {
         x = 3; y = 4;
@@ -164,16 +164,16 @@ line. It also does error checking and binds the variables `x` and `y` to *3* and
 
 This produces the output:
 
-    $ example2 "sqrt(x^2+y2)"
+    $ example2 "sqrt(pow(x,2)+y2)"
         Evaluating:
-                sqrt(x^2+y2)
-                          ^
+                sqrt(pow(x,2)+y2)
+                                ^
         Error near here
 
 
-    $ example2 "sqrt(x^2+y^2)"
+    $ example2 "sqrt(pow(x,2)+pow(y,2))"
         Evaluating:
-                sqrt(x^2+y^2)
+                sqrt(pow(x,2)+pow(y,2))
         Result:
                 5.000000
 
@@ -229,7 +229,7 @@ Here is some example performance numbers taken from the included
 
 | Expression | te_eval time | native C time | slowdown  |
 | :------------- |-------------:| -----:|----:|
-| sqrt(a^1.5+a^2.5) | 15,641 ms | 14,478 ms | 8% slower |
+| sqrt(pow(a,1.5)+pow(a,2.5)) | 15,641 ms | 14,478 ms | 8% slower |
 | a+5 | 765 ms | 563 ms | 36% slower |
 | a+(5*2) | 765 ms | 563 ms | 36% slower |
 | (a+5)*2 | 1422 ms | 563 ms | 153% slower |
@@ -241,11 +241,19 @@ Here is some example performance numbers taken from the included
 
 TinyExpr parses the following grammar:
 
-    <list>      =    <expr> {"," <expr>}
+    <list>      =    <logical-or> {"," <logical-or>}
+    <logical-or> =   <logical-and> {"||" <logical-and>}
+    <logical-and> =  <bitwise-or> {"&&" <bitwise-or>}
+    <bitwise-or> =   <bitwise-xor> {"|" <bitwise-xor>}
+    <bitwise-xor> =  <bitwise-and> {"^" <bitwise-and>}
+    <bitwise-and> =  <equality> {"&" <equality>}
+    <equality>  =    <relational> {("==" | "!=") <relational>}
+    <relational> =   <shift> {("<" | "<=" | ">" | ">=") <shift>}
+    <shift>     =    <expr> {("<<" | ">>") <expr>}
     <expr>      =    <term> {("+" | "-") <term>}
     <term>      =    <factor> {("*" | "/" | "%") <factor>}
-    <factor>    =    <power> {"^" <power>}
-    <power>     =    {("-" | "+")} <base>
+    <factor>    =    <power>
+    <power>     =    {("-" | "+" | "!" | "~")} <base>
     <base>      =    <constant>
                    | <variable>
                    | <function-0> {"(" ")"}
@@ -265,13 +273,13 @@ A leading zero is not required (e.g., *.5* for *0.5*).
 ## Functions supported
 
 TinyExpr supports addition (+), subtraction/negation (-), multiplication (\*),
-division (/), exponentiation (^) and modulus (%) with the normal operator
-precedence (the one exception being that exponentiation is evaluated
-left-to-right, but this can be changed - see below).
+division (/), modulus (%), comparisons (`< <= > >= == !=`), logical operators
+(`! && ||`), and bitwise operators (`~ & ^ | << >>`) with C-like precedence.
+Exponentiation is available via the `pow(a, b)` function.
 
 The following C math functions are also supported:
 
-- abs (calls to *fabs*), acos, asin, atan, atan2, ceil, cos, cosh, exp, floor, ln (calls to *log*), log (calls to *log10* by default, see below), log10, pow, sin, sinh, sqrt, tan, tanh
+- abs (calls to *fabs*), acos, asin, atan, atan2, ceil, cos, cosh, exp, floor, ln (calls to *log*), log (calls to *log10* by default, see below), log10, pow, sin, sinh, sqrt, tan, tanh, xor
 
 The following functions are also built-in and provided by TinyExpr:
 
@@ -287,21 +295,10 @@ Also, the following constants are available:
 ## Compile-time options
 
 
-By default, TinyExpr does exponentiation from left to right. For example:
+`^` is the bitwise XOR operator. Use `pow(a, b)` for exponentiation.
 
-`a^b^c == (a^b)^c` and `-a^b == (-a)^b`
-
-This is by design. It's the way that spreadsheets do it (e.g. Excel, Google Sheets).
-
-
-If you would rather have exponentiation work from right to left, you need to
-define `TE_POW_FROM_RIGHT` when compiling `tinyexpr.c`. There is a
-commented-out define near the top of that file. With this option enabled, the
-behaviour is:
-
-`a^b^c == a^(b^c)` and `-a^b == -(a^b)`
-
-That will match how many scripting languages do it (e.g. Python, Ruby).
+`TE_POW_FROM_RIGHT` is retained only for backward compatibility with older
+TinyExpr revisions and no longer changes the meaning of `^`.
 
 Also, if you'd like `log` to default to the natural log instead of `log10`,
 then you can define `TE_NAT_LOG`.
@@ -316,4 +313,3 @@ then you can define `TE_NAT_LOG`.
   parentheses are important, because TinyExpr will not change the order of
   evaluation. If you instead compiled "x+1+5" TinyExpr will insist that "1" is
   added to "x" first, and "5" is added the result second.
-
