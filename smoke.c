@@ -175,6 +175,16 @@ void test_results() {
         {"if(5&1, 3, 4)", 3},
         {"if(1, 42, fac(-1))", 42},
         {"if(0, fac(-1), 42)", 42},
+        {"min(3,5)", 3},
+        {"max(3,5)", 5},
+        {"clip(7,2,5)", 5},
+        {"clip(1,2,5)", 2},
+        {"clip(3,2,5)", 3},
+        {"round(2.6)", 3},
+        {"round(-2.6)", -3},
+        {"sign(5)", 1},
+        {"sign(-5)", -1},
+        {"sign(0)", 0},
 
     };
 
@@ -407,6 +417,8 @@ void test_functions() {
         cross_check("floor x", floor(x));
         cross_check("ln x", log(x));
         cross_check("log10 x", log10(x));
+        cross_check("round x", round(x));
+        cross_check("sign x", x > 0 ? 1 : (x < 0 ? -1 : 0));
         cross_check("sin x", sin(x));
         cross_check("sinh x", sinh(x));
         cross_check("sqrt x", sqrt(x));
@@ -416,6 +428,8 @@ void test_functions() {
         for (y = -2; y < 2; y += .2) {
             if (fabs(x) < 0.01) break;
             cross_check("atan2(x,y)", atan2(x, y));
+            cross_check("max(x,y)", fmax(x, y));
+            cross_check("min(x,y)", fmin(x, y));
             cross_check("pow(x,y)", pow(x, y));
         }
     }

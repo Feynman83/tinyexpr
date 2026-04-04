@@ -123,6 +123,16 @@ void te_free(te_expr *n) {
 
 static double pi(void) {return 3.14159265358979323846;}
 static double e(void) {return 2.71828182845904523536;}
+static double clip(double value, double min_value, double max_value) {
+    if (value < min_value) return min_value;
+    if (value > max_value) return max_value;
+    return value;
+}
+static double sign(double value) {
+    if (value > 0.0) return 1.0;
+    if (value < 0.0) return -1.0;
+    return 0.0;
+}
 static double te_if(double condition, double true_value, double false_value) {
     return condition != 0.0 ? true_value : false_value;
 }
@@ -170,6 +180,7 @@ static const te_variable functions[] = {
     {"atan", atan,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"atan2", atan2,  TE_FUNCTION2 | TE_FLAG_PURE, 0},
     {"ceil", ceil,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
+    {"clip", clip,    TE_FUNCTION3 | TE_FLAG_PURE, 0},
     {"cos", cos,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"cosh", cosh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"e", e,          TE_FUNCTION0 | TE_FLAG_PURE, 0},
@@ -184,10 +195,14 @@ static const te_variable functions[] = {
     {"log", log10,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #endif
     {"log10", log10,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+    {"max", fmax,     TE_FUNCTION2 | TE_FLAG_PURE, 0},
+    {"min", fmin,     TE_FUNCTION2 | TE_FLAG_PURE, 0},
     {"ncr", ncr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
     {"npr", npr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
     {"pi", pi,        TE_FUNCTION0 | TE_FLAG_PURE, 0},
     {"pow", pow,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
+    {"round", round,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+    {"sign", sign,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"sin", sin,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"sinh", sinh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"sqrt", sqrt,    TE_FUNCTION1 | TE_FLAG_PURE, 0},

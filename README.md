@@ -288,10 +288,11 @@ Exponentiation is available via the `pow(a, b)` function.
 
 The following C math functions are also supported:
 
-- abs (calls to *fabs*), acos, asin, atan, atan2, ceil, cos, cosh, exp, floor, ln (calls to *log*), log (calls to *log10* by default, see below), log10, pow, sin, sinh, sqrt, tan, tanh, xor
+- abs (calls to *fabs*), acos, asin, atan, atan2, ceil, cos, cosh, exp, floor, ln (calls to *log*), log (calls to *log10* by default, see below), log10, max, min, pow, round, sign, sin, sinh, sqrt, tan, tanh, xor
 
 The following functions are also built-in and provided by TinyExpr:
 
+- clip (clamps a value e.g. `clip(x, lo, hi)`)
 - fac (factorials e.g. `fac 5` == 120)
 - if (conditional e.g. `if(x, v1, v2)` returns `v1` when `x != 0`, otherwise `v2`)
 - ncr (combinations e.g. `ncr(6,2)` == 15)
