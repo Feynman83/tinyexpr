@@ -848,7 +848,16 @@ double te_eval(const te_expr *n) {
             switch(ARITY(n->type)) {
                 case 0: return TE_FUN(void)();
                 case 1: return TE_FUN(double)(M(0));
-                case 2: return TE_FUN(double, double)(M(0), M(1));
+                case 2:
+                    if (n->function == logical_and) {
+                        const double left = M(0);
+                        return left != 0.0 ? (M(1) != 0.0 ? 1.0 : 0.0) : 0.0;
+                    }
+                    if (n->function == logical_or) {
+                        const double left = M(0);
+                        return left != 0.0 ? 1.0 : (M(1) != 0.0 ? 1.0 : 0.0);
+                    }
+                    return TE_FUN(double, double)(M(0), M(1));
                 case 3:
                     if (n->function == te_if) {
                         const double condition = M(0);

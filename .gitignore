@@ -1,0 +1,9 @@
+*.o
+*.exe
+bench
+example
+example2
+example3
+repl
+smoke
+smoke_pr
