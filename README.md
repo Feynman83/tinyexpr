@@ -196,6 +196,15 @@ te_expr *n = te_compile("mysum(5, 6)", vars, 1, 0);
 
 ```
 
+TinyExpr also includes a built-in conditional helper:
+
+```C
+    te_interp("if(x, 10, 20)", 0);
+```
+
+This returns the second argument when the first argument is non-zero, and the
+third argument otherwise.
+
 
 ## How it works
 
@@ -284,6 +293,7 @@ The following C math functions are also supported:
 The following functions are also built-in and provided by TinyExpr:
 
 - fac (factorials e.g. `fac 5` == 120)
+- if (conditional e.g. `if(x, v1, v2)` returns `v1` when `x != 0`, otherwise `v2`)
 - ncr (combinations e.g. `ncr(6,2)` == 15)
 - npr (permutations e.g. `npr(6,2)` == 30)
 

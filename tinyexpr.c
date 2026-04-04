@@ -123,6 +123,9 @@ void te_free(te_expr *n) {
 
 static double pi(void) {return 3.14159265358979323846;}
 static double e(void) {return 2.71828182845904523536;}
+static double te_if(double condition, double true_value, double false_value) {
+    return condition != 0.0 ? true_value : false_value;
+}
 static double fac(double a) {/* simplest version of fac */
     if (a < 0.0)
         return NAN;
@@ -173,6 +176,7 @@ static const te_variable functions[] = {
     {"exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"fac", fac,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"floor", floor,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+    {"if", te_if,     TE_FUNCTION3 | TE_FLAG_PURE, 0},
     {"ln", log,       TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #ifdef TE_NAT_LOG
     {"log", log,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
@@ -489,7 +493,7 @@ static te_expr *base(state *s) {
                 int i;
                 for(i = 0; i < arity; i++) {
                     next_token(s);
-                    ret->parameters[i] = expr(s);
+                    ret->parameters[i] = logical_or_expr(s);
                     CHECK_NULL(ret->parameters[i], te_free(ret));
 
                     if(s->type != TOK_SEP) {
@@ -845,7 +849,12 @@ double te_eval(const te_expr *n) {
                 case 0: return TE_FUN(void)();
                 case 1: return TE_FUN(double)(M(0));
                 case 2: return TE_FUN(double, double)(M(0), M(1));
-                case 3: return TE_FUN(double, double, double)(M(0), M(1), M(2));
+                case 3:
+                    if (n->function == te_if) {
+                        const double condition = M(0);
+                        return condition != 0.0 ? M(1) : M(2);
+                    }
+                    return TE_FUN(double, double, double)(M(0), M(1), M(2));
                 case 4: return TE_FUN(double, double, double, double)(M(0), M(1), M(2), M(3));
                 case 5: return TE_FUN(double, double, double, double, double)(M(0), M(1), M(2), M(3), M(4));
                 case 6: return TE_FUN(double, double, double, double, double, double)(M(0), M(1), M(2), M(3), M(4), M(5));
