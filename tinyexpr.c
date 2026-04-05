@@ -42,6 +42,20 @@ For log = natural log uncomment the next line. */
 #include <ctype.h>
 #include <limits.h>
 
+/* Memory allocation hooks.
+ * Override by defining these macros before including tinyexpr.c, or via -D on
+ * the compiler command line.  The signatures match malloc/free exactly so any
+ * drop-in allocator works without a wrapper.
+ *
+ *   cc -DTE_MALLOC=my_malloc -DTE_FREE=my_free ...
+ */
+#ifndef TE_MALLOC
+#define TE_MALLOC malloc
+#endif
+#ifndef TE_FREE
+#define TE_FREE free
+#endif
+
 #ifndef NAN
 #define NAN (0.0/0.0)
 #endif
@@ -90,7 +104,7 @@ static te_expr *new_expr(const int type, const te_expr *parameters[]) {
     const int arity = ARITY(type);
     const int psize = sizeof(void*) * arity;
     const int size = (sizeof(te_expr) - sizeof(void*)) + psize + (IS_CLOSURE(type) ? sizeof(void*) : 0);
-    te_expr *ret = malloc(size);
+    te_expr *ret = TE_MALLOC(size);
     CHECK_NULL(ret);
 
     memset(ret, 0, size);
@@ -120,7 +134,7 @@ void te_free_parameters(te_expr *n) {
 void te_free(te_expr *n) {
     if (!n) return;
     te_free_parameters(n);
-    free(n);
+    TE_FREE(n);
 }
 
 
@@ -1071,11 +1085,11 @@ te_pool *te_pool_compile(const char *buf, int len,
         p++; /* skip NUL */
     }
 
-    te_pool *pool = malloc(sizeof(te_pool));
+    te_pool *pool = TE_MALLOC(sizeof(te_pool));
     if (!pool) return NULL;
     pool->count = count;
-    pool->exprs = malloc(sizeof(te_expr *) * count);
-    if (!pool->exprs) { free(pool); return NULL; }
+    pool->exprs = TE_MALLOC(sizeof(te_expr *) * count);
+    if (!pool->exprs) { TE_FREE(pool); return NULL; }
 
     /* Second pass: compile each expression. */
     p = buf;
@@ -1105,6 +1119,6 @@ void te_pool_free(te_pool *pool) {
     if (!pool) return;
     for (int i = 0; i < pool->count; i++)
         te_free(pool->exprs[i]);
-    free(pool->exprs);
-    free(pool);
+    TE_FREE(pool->exprs);
+    TE_FREE(pool);
 }
