@@ -1051,3 +1051,60 @@ static void pn (const te_expr *n, int depth) {
 void te_print(const te_expr *n) {
     pn(n, 0);
 }
+
+
+struct te_pool {
+    te_expr **exprs;
+    int count;
+};
+
+te_pool *te_pool_compile(const char *buf, int len,
+                         const te_variable *variables, int var_count,
+                         int *errors) {
+    /* First pass: count expressions by scanning for NUL separators. */
+    int count = 0;
+    const char *p = buf;
+    const char *end = buf + len;
+    while (p < end && *p != '\0') {
+        count++;
+        while (p < end && *p != '\0') p++;
+        p++; /* skip NUL */
+    }
+
+    te_pool *pool = malloc(sizeof(te_pool));
+    if (!pool) return NULL;
+    pool->count = count;
+    pool->exprs = malloc(sizeof(te_expr *) * count);
+    if (!pool->exprs) { free(pool); return NULL; }
+
+    /* Second pass: compile each expression. */
+    p = buf;
+    for (int i = 0; i < count; i++) {
+        int err = 0;
+        pool->exprs[i] = te_compile(p, variables, var_count, &err);
+        if (errors) errors[i] = err;
+        while (*p != '\0') p++;
+        p++; /* skip NUL */
+    }
+
+    return pool;
+}
+
+double te_pool_eval(const te_pool *pool, int index) {
+    if (!pool || index < 0 || index >= pool->count) return NAN;
+    if (!pool->exprs[index]) return NAN;
+    return te_eval(pool->exprs[index]);
+}
+
+int te_pool_count(const te_pool *pool) {
+    if (!pool) return 0;
+    return pool->count;
+}
+
+void te_pool_free(te_pool *pool) {
+    if (!pool) return;
+    for (int i = 0; i < pool->count; i++)
+        te_free(pool->exprs[i]);
+    free(pool->exprs);
+    free(pool);
+}

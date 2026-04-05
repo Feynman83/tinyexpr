@@ -80,6 +80,31 @@ void te_print(const te_expr *n);
 void te_free(te_expr *n);
 
 
+/* Expression pool: compile a string pool (NUL-separated, double-NUL terminated)
+ * into an array of te_expr*, indexed by sequence number 0,1,2,...
+ *
+ * String pool format:  "expr0\0expr1\0expr2\0\0"
+ *                       ^--- buf                 ^--- buf+len
+ */
+typedef struct te_pool te_pool;
+
+/* Compile all expressions in the pool.
+ * errors: optional int array (caller-allocated, length = number of expressions).
+ *         errors[i] == 0 means success; non-zero means parse error position. */
+te_pool *te_pool_compile(const char *buf, int len,
+                         const te_variable *variables, int var_count,
+                         int *errors);
+
+/* Evaluate the i-th expression. Returns NaN on bad index or compile error. */
+double te_pool_eval(const te_pool *pool, int index);
+
+/* Number of expressions in the pool. */
+int te_pool_count(const te_pool *pool);
+
+/* Free the pool and all compiled expressions. */
+void te_pool_free(te_pool *pool);
+
+
 #ifdef __cplusplus
 }
 #endif
