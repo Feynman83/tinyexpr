@@ -324,3 +324,104 @@ then you can define `TE_NAT_LOG`.
   parentheses are important, because TinyExpr will not change the order of
   evaluation. If you instead compiled "x+1+5" TinyExpr will insist that "1" is
   added to "x" first, and "5" is added the result second.
+
+
+## Extensions
+
+### Indexed-Variable Shorthand (`x1`, `x12`, `y3`, ...)
+
+When a `TE_CLOSURE1` is registered under a short name (e.g. `"x"`), you can
+write the index directly as a numeric suffix in the expression instead of using
+explicit call syntax:
+
+| Expression | Equivalent |
+|------------|------------|
+| `x0`       | `x(0)`     |
+| `x1`       | `x(1)`     |
+| `x12`      | `x(12)`    |
+| `y3`       | `y(3)`     |
+
+The suffix is resolved at **compile time** into a constant node — there is no
+runtime overhead.
+
+**Setup:**
+
+```c
+typedef struct { int device_id; int point_id; } MyCtx;
+
+double x_func(void *ctx, double index) {
+    /* look up channel `index` for device/point in ctx */
+    return ...;
+}
+double y_func(void *ctx, double index) { return ...; }
+
+MyCtx ctx = {1, 42};
+te_variable vars[] = {
+    {"x", x_func, TE_CLOSURE1, &ctx},
+    {"y", y_func, TE_CLOSURE1, &ctx},
+};
+
+int err;
+te_expr *n = te_compile("x1 + y2 * 2", vars, 2, &err);
+/* equivalent to: x(1) + y(2) * 2 */
+```
+
+Normal explicit-call syntax (`x(0)`, `x(1)`) continues to work alongside the
+shorthand.
+
+
+### Expression Pool (`te_pool`)
+
+Compile a pool of NUL-separated expressions once, then evaluate any of them by
+index with zero re-parsing cost.
+
+**String pool format:** expressions separated by `\0`, terminated by `\0\0`.
+
+```
+"expr0\0expr1\0expr2\0\0"
+```
+
+**API:**
+
+```c
+/* Compile all expressions in the pool.
+ * errors[i] == 0 on success, non-zero gives the parse-error position.
+ * Pass NULL for errors if you don't need per-expression diagnostics. */
+te_pool *te_pool_compile(const char *buf, int len,
+                         const te_variable *variables, int var_count,
+                         int *errors);
+
+/* Evaluate the i-th expression. Returns NaN on bad index or compile failure. */
+double te_pool_eval(const te_pool *pool, int index);
+
+/* Number of expressions in the pool. */
+int te_pool_count(const te_pool *pool);
+
+/* Free the pool and all compiled expressions. */
+void te_pool_free(te_pool *pool);
+```
+
+**Example:**
+
+```c
+/* Build the pool buffer */
+const char buf[] = "x1+y2\0x0*2\0sqrt(x2)\0";
+
+int errors[3];
+te_pool *pool = te_pool_compile(buf, sizeof(buf), vars, 2, errors);
+
+for (int i = 0; i < te_pool_count(pool); i++) {
+    if (errors[i]) printf("expr[%d] parse error at %d\n", i, errors[i]);
+}
+
+/* Change context, evaluate by index — no recompilation needed */
+ctx.device_id = 2;
+double r0 = te_pool_eval(pool, 0);  /* x1+y2   */
+double r1 = te_pool_eval(pool, 1);  /* x0*2    */
+double r2 = te_pool_eval(pool, 2);  /* sqrt(x2) */
+
+te_pool_free(pool);
+```
+
+`te_eval` only walks the pre-compiled syntax tree, so evaluating a pooled
+expression is just as fast as evaluating a single `te_expr*` directly.
