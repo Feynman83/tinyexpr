@@ -71,6 +71,9 @@ typedef struct state {
 
     const te_variable *lookup;
     int lookup_len;
+
+    int index_arg;       /* 1 = this CLOSURE1 token has a baked-in constant index */
+    double index_value;  /* the constant index value (from numeric suffix in name)  */
 } state;
 
 
@@ -312,8 +315,36 @@ void next_token(state *s) {
                 start = s->next;
                 while (isalpha(s->next[0]) || isdigit(s->next[0]) || (s->next[0] == '_')) s->next++;
                 
+                s->index_arg = 0;
+                s->index_value = 0.0;
+
                 const te_variable *var = find_lookup(s, start, s->next - start);
                 if (!var) var = find_builtin(start, s->next - start);
+
+                /* If not found as a whole name, try splitting "alpha-prefix + digit-suffix".
+                 * e.g. "x12" -> prefix "x", index 12 -> treat as x(12) if "x" is a CLOSURE1. */
+                if (!var) {
+                    const char *p = start;
+                    while (p < s->next && isalpha((unsigned char)*p)) p++;
+                    /* p now points to the numeric suffix (if any) */
+                    if (p > start && p < s->next) {
+                        const char *q = p;
+                        int all_digits = 1;
+                        while (q < s->next) {
+                            if (!isdigit((unsigned char)*q)) { all_digits = 0; break; }
+                            q++;
+                        }
+                        if (all_digits) {
+                            var = find_lookup(s, start, p - start);
+                            if (var && TYPE_MASK(var->type) == TE_CLOSURE1) {
+                                s->index_arg = 1;
+                                s->index_value = (double)strtol(p, NULL, 10);
+                            } else {
+                                var = NULL;
+                            }
+                        }
+                    }
+                }
 
                 if (!var) {
                     s->type = TOK_ERROR;
@@ -335,6 +366,7 @@ void next_token(state *s) {
                             s->function = var->address;
                             break;
                     }
+
                 }
 
             } else {
@@ -484,9 +516,22 @@ static te_expr *base(state *s) {
 
             ret->function = s->function;
             if (IS_CLOSURE(s->type)) ret->parameters[1] = s->context;
-            next_token(s);
-            ret->parameters[0] = power(s);
-            CHECK_NULL(ret->parameters[0], te_free(ret));
+            {
+                /* Read index_arg BEFORE next_token() advances state. */
+                int has_index = s->index_arg;
+                double index_val = s->index_value;
+                next_token(s);
+                if (has_index) {
+                    /* Baked-in constant index from numeric suffix (e.g. x12 → x(12)). */
+                    te_expr *idx = new_expr(TE_CONSTANT, 0);
+                    CHECK_NULL(idx, te_free(ret));
+                    idx->value = index_val;
+                    ret->parameters[0] = idx;
+                } else {
+                    ret->parameters[0] = power(s);
+                    CHECK_NULL(ret->parameters[0], te_free(ret));
+                }
+            }
             break;
 
         case TE_FUNCTION2: case TE_FUNCTION3: case TE_FUNCTION4:
@@ -939,6 +984,8 @@ te_expr *te_compile(const char *expression, const te_variable *variables, int va
     s.start = s.next = expression;
     s.lookup = variables;
     s.lookup_len = var_count;
+    s.index_arg = 0;
+    s.index_value = 0.0;
 
     next_token(&s);
     te_expr *root = list(&s);
